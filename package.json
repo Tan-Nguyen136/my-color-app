@@ -1,0 +1,25 @@
+{
+  "name": "my-color-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "color-namer": "1.4.0",
+    "next": "14.2.3",
+    "node-vibrant": "3.1.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.11",
+    "autoprefixer": "10.4.16",
+    "postcss": "8.4.31",
+    "tailwindcss": "3.3.3",
+    "typescript": "5.9.2"
+  }
+}
