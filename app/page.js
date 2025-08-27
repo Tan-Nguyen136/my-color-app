@@ -19,15 +19,7 @@ export default function Home() {
   }, [preview]);
 
   function safeName(hex) {
-    try {
-      const colorNames = {
-        '#FF0000': 'Pure Red', '#00FF00': 'Pure Green', '#0000FF': 'Pure Blue',
-        '#FFFFFF': 'Pure White', '#000000': 'Pure Black', '#808080': 'Medium Gray'
-      };
-      return colorNames[hex.toUpperCase()] || `Color ${hex}`;
-    } catch {
-      return "Custom Color";
-    }
+    return getColorName(hex);
   }
 
   async function handleFile(e) {
@@ -83,25 +75,105 @@ export default function Home() {
     ctx.drawImage(img, 0, 0);
 
     try {
-      const mockPalette = [
-        { key: 'dominant', hex: '#3B82F6', population: 1000, name: 'Sky Blue' },
-        { key: 'vibrant', hex: '#EF4444', population: 800, name: 'Vibrant Red' },
-        { key: 'muted', hex: '#6B7280', population: 600, name: 'Cool Gray' },
-        { key: 'light', hex: '#F3F4F6', population: 400, name: 'Light Gray' },
-        { key: 'accent', hex: '#10B981', population: 350, name: 'Emerald' },
-        { key: 'warm', hex: '#F59E0B', population: 300, name: 'Amber' },
-        { key: 'cool', hex: '#8B5CF6', population: 250, name: 'Violet' },
-        { key: 'neutral', hex: '#374151', population: 200, name: 'Dark Gray' }
-      ];
-      
-      setTimeout(() => {
-        setPalette(mockPalette);
-        setLoadingPalette(false);
-      }, 1000);
+      // Extract actual dominant colors from the image
+      const dominantColors = await extractDominantColors(canvas);
+      setPalette(dominantColors);
+      setLoadingPalette(false);
     } catch (err) {
       console.error("Palette extraction error", err);
       setLoadingPalette(false);
     }
+  }
+
+  async function extractDominantColors(canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Sample pixels (every 10th pixel to improve performance)
+    const colorCounts = {};
+    const sampleRate = 10;
+    
+    for (let i = 0; i < data.length; i += 4 * sampleRate) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const alpha = data[i + 3];
+      
+      // Skip transparent pixels
+      if (alpha < 128) continue;
+      
+      // Reduce color precision for better grouping (divide by 16 and multiply back)
+      const reducedR = Math.floor(r / 16) * 16;
+      const reducedG = Math.floor(g / 16) * 16;
+      const reducedB = Math.floor(b / 16) * 16;
+      
+      const colorKey = `${reducedR},${reducedG},${reducedB}`;
+      colorCounts[colorKey] = (colorCounts[colorKey] || 0) + 1;
+    }
+    
+    // Sort colors by frequency and get top 8
+    const sortedColors = Object.entries(colorCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 8);
+    
+    // Convert to our color format
+    return sortedColors.map(([colorKey, count], index) => {
+      const [r, g, b] = colorKey.split(',').map(Number);
+      const hex = rgbaToHex(r, g, b);
+      return {
+        key: `dominant-${index}`,
+        hex,
+        population: count,
+        name: getColorName(hex)
+      };
+    });
+  }
+
+  function getColorName(hex) {
+    // Enhanced color naming system
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    // Calculate HSL for better color classification
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    const lightness = (max + min) / 2;
+    
+    // Classify by lightness first
+    if (lightness < 30) return 'Dark Shade';
+    if (lightness > 225) return 'Light Shade';
+    
+    // Then by dominant color
+    if (diff < 30) {
+      // Grayscale
+      if (lightness < 85) return 'Dark Gray';
+      if (lightness < 170) return 'Medium Gray';
+      return 'Light Gray';
+    }
+    
+    // Color classification
+    if (r > g && r > b) {
+      if (g > b * 1.5) return 'Orange Tone';
+      if (b > g * 1.5) return 'Magenta Tone';
+      return 'Red Tone';
+    }
+    
+    if (g > r && g > b) {
+      if (r > b * 1.2) return 'Yellow Tone';
+      if (b > r * 1.2) return 'Cyan Tone';
+      return 'Green Tone';
+    }
+    
+    if (b > r && b > g) {
+      if (r > g * 1.2) return 'Purple Tone';
+      if (g > r * 1.2) return 'Teal Tone';
+      return 'Blue Tone';
+    }
+    
+    return 'Mixed Tone';
   }
 
   function posToCanvas(e) {
