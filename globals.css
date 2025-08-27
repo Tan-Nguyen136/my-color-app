@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* small custom */
+:root { color-scheme: light dark; }
+html, body, #__next { height: 100%; }
+body { @apply bg-slate-900 text-slate-100 antialiased; }
